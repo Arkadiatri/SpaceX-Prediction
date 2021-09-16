@@ -1,10 +1,14 @@
 # Import required libraries
 import pandas as pd
+
+if not __name__ == '__main__':
+    import jupyter_dash
+
 import dash
-# import dash_html_components as html
-from dash import html
-# import dash_core_components as dcc
-from dash import dcc
+import dash_html_components as html
+#from dash import html # Alternate to line above in case of newer dash versions
+import dash_core_components as dcc
+#from dash import dcc # Alternate to line above in case of newer dash versions
 from dash.dependencies import Input, Output
 import plotly.express as px
 
@@ -15,7 +19,10 @@ min_payload = spacex_df['Payload Mass (kg)'].min()
 landing_sites = spacex_df['Launch Site'].sort_values().unique().tolist()
 
 # Create a dash application
-app = dash.Dash(__name__)
+if __name__ == '__main__':
+    app = dash.Dash(__name__)
+else:
+    app = jupyter_dash.JupyterDash(__name__)
 
 # Create an app layout
 app.layout = html.Div(children=[html.H1('SpaceX Launch Records Dashboard',
@@ -43,8 +50,8 @@ app.layout = html.Div(children=[html.H1('SpaceX Launch Records Dashboard',
                                                           max=10000,
                                                           step=1000,
                                                           value=[min_payload, max_payload],
-                                                          marks={x:x for x in range(0,11000,1000)}
-                                                          )
+                                                          marks={x:str(x) for x in range(0,11000,1000)} # str(x) replaces x for compatibility with jupyterlab-dash
+                                                          ),
                                 ),
                                 html.Br(),
 
@@ -73,9 +80,8 @@ def render_pie(input_value):
     ]
 )
 def render_scatter(input_site, input_range):
-    print(input_site, input_range)
     if input_site=='All':
-        df = spacex_df.loc[spacex_df['Payload Mass (kg)'].between(*input_range),:]
+        df = spacex_df.loc[spacex_df['Payload Mass (kg)'].between(*input_range),:].copy()
         success_rate = df['class'].mean()
         success_count = df['class'].sum()
         total_count = df['class'].count()
@@ -83,7 +89,7 @@ def render_scatter(input_site, input_range):
         df_booster['Count'] = df[['Booster Version Category','class']].groupby('Booster Version Category').sum()['class'].values
         df_booster['Total'] = df[['Booster Version Category','class']].groupby('Booster Version Category').count()['class'].values
         df_booster['New Name'] = [f"{row['Booster Version Category']:4s}, {row['Success Rate']*100:5.1f}% ({row['Count']}/{row['Total']})" for i, row in df_booster.iterrows()]
-        df['Booster Version Category'] = df['Booster Version Category'].map(dict(zip(df_booster['Booster Version Category'],df_booster['New Name'])))
+        df.loc[:,'Booster Version Category'] = df.loc[:,'Booster Version Category'].map(dict(zip(df_booster['Booster Version Category'],df_booster['New Name']))).values # added .values and .loc[:] to prevent assigning slice error
         return px.scatter(df,
                           x='Payload Mass (kg)',
                           y='class',
@@ -92,7 +98,7 @@ def render_scatter(input_site, input_range):
                          )
     else:
         df = spacex_df.loc[(spacex_df['Launch Site']==input_site)
-                            & (spacex_df['Payload Mass (kg)'].between(*input_range)),:]
+                            & (spacex_df['Payload Mass (kg)'].between(*input_range)),:].copy()
         success_rate = df['class'].mean()
         success_count = df['class'].sum()
         total_count = df['class'].count()
@@ -100,7 +106,7 @@ def render_scatter(input_site, input_range):
         df_booster['Count'] = df[['Booster Version Category','class']].groupby('Booster Version Category').sum()['class'].values
         df_booster['Total'] = df[['Booster Version Category','class']].groupby('Booster Version Category').count()['class'].values
         df_booster['New Name'] = [f"{row['Booster Version Category']:4s}, {row['Success Rate']*100:5.1f}% ({row['Count']}/{row['Total']})" for i, row in df_booster.iterrows()]
-        df['Booster Version Category'] = df['Booster Version Category'].map(dict(zip(df_booster['Booster Version Category'],df_booster['New Name'])))
+        df.loc[:,'Booster Version Category'] = df.loc[:,'Booster Version Category'].map(dict(zip(df_booster['Booster Version Category'],df_booster['New Name']))).values # added .values and .loc[:] to prevent assigning slice error
         return px.scatter(df,
                           x='Payload Mass (kg)',
                           y='class',
